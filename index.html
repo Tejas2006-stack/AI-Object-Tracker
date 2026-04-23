@@ -1,36 +1,211 @@
-<html>
-
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>AI Object Finder</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.0.0/p5.js"></script>
+    <title>VisionAI | Object Finder</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.1/p5.js"></script>
     <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --success: #22c55e;
+            --bg: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #f8fafc;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 900px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 14px 20px;
+            color: white;
+            width: 300px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4);
+        }
+
+        #canvas-wrapper {
+            margin-top: 20px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            display: inline-block;
+            background: #000;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .dot {
+            height: 10px; width: 10px;
+            background-color: #ef4444;
+            border-radius: 50%;
+        }
+
+        .dot.active { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
+    </style>
 </head>
+<body>
 
-<body background="abstract-blue-geometric-shapes-background_1035-17545.jpeg" style="background-size:cover;">
-    <center>
-        <h1 id="title" class="btn btn-info" style="pointer-events: none;">AI Object Finder App
-            <br>
-            <h3 style="color: black;">The input you type in should match the values of CoCo SSD in order for it to
-                function properly</h3>
-        </h1>
-        <br> <br>
-        <div>
-            <label>Object name</label>
-            <input style="width: 300px">
-            <button onclick="start()" class="btn btn-success" id="start">start</button>
-            <br> <br>
-            <span>
-                <button class="btn btn-warning" style="pointer-events: none;"></button>
-                <button class="btn btn-danger" style="pointer-events: none"></button>
-            </span>
+    <div class="container">
+        <h1>VisionAI</h1>
+        <p>Real-time neural network object detection</p>
+
+        <div class="input-group">
+            <input type="text" id="targetInput" placeholder="What should I find?">
+            <button onclick="initiateDetection()">Start Scan</button>
         </div>
-        <div id="container"></div>
-    </center>
-</body>
 
+        <div id="canvas-wrapper"></div>
+
+        <div class="status-bar">
+            <span id="statusIndicator" class="dot"></span>
+            <span id="statusText">System Offline</span>
+        </div>
+    </div>
+
+    <script>
+        let video;
+        let detector;
+        let detections = [];
+        let target = "";
+        let isActive = false;
+
+        function setup() {
+            const canvas = createCanvas(640, 400);
+            canvas.parent('canvas-wrapper');
+            video = createCapture(VIDEO);
+            video.size(640, 400);
+            video.hide();
+        }
+
+        function initiateDetection() {
+            target = document.getElementById("targetInput").value.trim().toLowerCase();
+            if (!target) return alert("Enter an object name!");
+            
+            document.getElementById("statusText").innerText = "Loading Model...";
+            detector = ml5.objectDetector('cocossd', () => {
+                document.getElementById("statusIndicator").classList.add("active");
+                document.getElementById("statusText").innerText = "Scanning for: " + target;
+                isActive = true;
+            });
+        }
+
+        function draw() {
+            // Natural Mirror View
+            translate(width, 0);
+            scale(-1, 1);
+            image(video, 0, 0, width, height);
+            scale(-1, 1);
+            translate(-width, 0);
+
+            if (isActive) {
+                detector.detect(video, (err, results) => {
+                    if (!err) detections = results;
+                });
+
+                detections.forEach(obj => {
+                    if (obj.label.toLowerCase() === target) {
+                        let displayX = width - obj.x - obj.width;
+                        noFill();
+                        stroke(34, 197, 94);
+                        strokeWeight(3);
+                        rect(displayX, obj.y, obj.width, obj.height, 8);
+                        
+                        fill(34, 197, 94);
+                        noStroke();
+                        rect(displayX, obj.y - 25, 100, 25, 4);
+                        fill(255);
+                        text("FOUND", displayX + 5, obj.y - 8);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
 </html>
